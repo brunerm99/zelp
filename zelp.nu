@@ -78,7 +78,6 @@ def session-exists [
   session_name: string
 ] -> bool {
   $session_name in (list-sessions)
-
 }
 
 # Requires 'dummy' entry in password store
