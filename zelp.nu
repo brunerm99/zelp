@@ -52,6 +52,20 @@ export def main [
   zellij --session $session_name --layout $temp_layout_path
 }
 
+export def delete [
+  --no-force (-n) # Don't force delete if in use
+] {
+  let sessions_to_delete = (list-sessions | input list -m)
+  if ($sessions_to_delete | is-empty) { return }
+  if $no_force {
+    $sessions_to_delete | each { |session| zellij delete-session $session | complete } 
+  } else {
+    $sessions_to_delete | each { |session| zellij delete-session $session --force | complete }
+  }
+  let num_deleted = ($sessions_to_delete | length)
+  print $"($num_deleted) sessions deleted"
+}
+
 # List git projects
 export def list-projects [
   --update (-u) # Update project list cache
