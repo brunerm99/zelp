@@ -1,0 +1,30 @@
+// default = true
+
+layout {
+  tab name="Tab #1" cwd=<project_dir> focus=true hide_floating_panes=true {
+    pane size=1 borderless=true {
+        plugin location="zellij:tab-bar"
+    }
+    pane {
+      focus true
+      name "editor"
+      cwd <project_dir>
+      close_on_exit true
+      command "nu"
+      args "-e" "vim ."
+    }
+    pane size=2 borderless=true {
+        plugin location="zellij:status-bar"
+    }
+    floating_panes {
+      pane {
+        name "terminal"
+        cwd <project_dir>
+        width "90%"
+        height "80%"
+        x "5%"
+        y "4%"
+      }
+    }
+  }
+}
