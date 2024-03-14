@@ -2,7 +2,7 @@
 > The successor to [gelp](https://github.com/brunerm99/small-scripts/blob/main/gelp.nu)
 
 ## What is it?
-It's a simple alternative to [tmux-sessionizer](https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer) for [zellij](zellij.dev) written purely in [nushell](https://www.nushell.sh/).
+It's a simple alternative to [tmux-sessionizer](https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer) for [zellij](https://zellij.dev/) written purely in [nushell](https://www.nushell.sh/).
 It has one basic feature and is not completely done.
 
 ## Setup
