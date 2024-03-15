@@ -1,4 +1,5 @@
 // default = true
+// auth-required = false
 
 layout {
   tab name="Tab #1" cwd=<project_dir> focus=true hide_floating_panes=true {
