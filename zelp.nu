@@ -12,14 +12,9 @@ export def main [
   init # Ensure everything is set up
 
   let projects = if $update { (list-projects -u) } else { (list-projects) }
-  let project_name = ($projects | path basename | input list --fuzzy)
-  if ($project_name | is-empty) { print "No choice... exiting"; return }
-  let project_dir = try { 
-    $projects | filter { ($in | path basename) == $project_name } | first
-  } catch {
-    print "Selected project not found... exiting"
-    return
-  }
+  let selection = ($projects | input list --fuzzy --display name)
+  if ($selection | is-empty) { print "No choice... exiting"; return }
+  let project_dir = ($selection.full_path | path dirname) 
 
   let layout_dir = [$env.XDG_CONFIG_HOME, "zellij", "layouts"] | path join
   let possible_custom_layout_path = ([$project_dir, "zlayout.kdl"] | path join)
@@ -30,11 +25,14 @@ export def main [
   }
 
   let layout_config = (parse-layout-config $layout_path)
-  let session_name = ($layout_config | get -i name | default $project_name)
-  print $"Session name: ($session_name)"
+  let session_name = ($layout_config | get -i name | default $selection.name)
 
   if (session-exists $session_name) {
-    if (input "Session exists, force restart (y/n)? ") == 'y' {
+    let restart_session_choice = (["no", "yes"] | input list "Session exists, force restart?")
+    if ($restart_session_choice | is-empty) {
+      print "No choice... exiting"
+      return
+    } else if $restart_session_choice == 'yes' {
       zellij delete-session $session_name --force
     } else {
       zellij attach $session_name
@@ -51,6 +49,10 @@ export def main [
 
   zellij --session $session_name --layout $temp_layout_path
 }
+
+# export def open-last [] {
+#   $projects | update uses { |row| if ($row.full_path == $selection.full_path) { $row.uses | 1 } else { $row.uses } } | update last_used { |row| if ($row.full_path == $selection.full_path) { date now } else { $row.last_used } } | reject full_path
+# }
 
 export def delete [
   --no-force (-n) # Don't force delete if in use
@@ -74,9 +76,15 @@ export def list-projects [
   if ($update) or not ($project_list_cache | path exists) {
     let ignore_dirs_arg = $"-E '{($IGNORE_DIRS | str join ',')}'" | str expand | str join ' '
     let fd_args = $'-Hau "^.git$" $"($env.HOME)" ($ignore_dirs_arg) --prune'
-    let full_paths = (nu -c $"fd ($fd_args)" | lines | path dirname)
-    $full_paths | to nuon | save -f $project_list_cache
-    $full_paths
+    let projects = (
+      nu -c $"fd ($fd_args)" | 
+        lines | 
+        path dirname | 
+        wrap full_path | 
+        insert name { |row| $row.full_path | path basename }
+    )
+    $projects | to nuon | save -f $project_list_cache
+    $projects
   } else {
     open $project_list_cache
   }
