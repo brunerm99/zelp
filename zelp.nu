@@ -14,10 +14,9 @@ export def main [
   let projects = if $update { (list-projects -u) } else { (list-projects) }
   let selection = ($projects | input list --fuzzy --display name)
   if ($selection | is-empty) { print "No choice... exiting"; return }
-  let project_dir = ($selection.full_path | path dirname) 
 
   let layout_dir = [$env.XDG_CONFIG_HOME, "zellij", "layouts"] | path join
-  let possible_custom_layout_path = ([$project_dir, "zlayout.kdl"] | path join)
+  let possible_custom_layout_path = ([$selection.full_path, "zlayout.kdl"] | path join)
   let layout_path = if ($possible_custom_layout_path | path exists) { 
     $possible_custom_layout_path 
   } else {
@@ -45,7 +44,7 @@ export def main [
     return
   }
 
-  let temp_layout_path = (create-temp-project-layout $layout_path $project_dir $session_name)
+  let temp_layout_path = (create-temp-project-layout $layout_path $selection.full_path $session_name)
 
   zellij --session $session_name --layout $temp_layout_path
 }
