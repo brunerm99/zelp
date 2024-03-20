@@ -1,8 +1,11 @@
 #!/bin/env nu
-# kif.nu
+# kif.nu - Kitty interface
+
+use zelp.nu
 
 const ALT = '\u1b'
 const CLEAR_SCREEN = '\u0c'
+const CLEAR_TERMINAL_INPUT = '\u15'
 const MAX_KITTY_SESSIONS = 20
 const SOCKET_DIR = "/tmp"
 const SOCKET_FILE_BASE_NAME = "kitty-socket-"
@@ -11,7 +14,16 @@ const SOCKET_FILE_BASE_NAME = "kitty-socket-"
 export def detach-zellij [
   kitty_socket: path # Kitty remote control socket path
 ] { 
-  kitten @ --to $"unix:($kitty_socket)" send-text $'($ALT)sd' 
+  kitten @ --to $"($kitty_socket)" send-text $'($ALT)sd' 
+}
+
+export def switch-session [] {
+  if ("KITTY_LISTEN_ON" in ($env | columns)) { 
+    detach-zellij $env.KITTY_LISTEN_ON
+    kitten @ --to $"($env.KITTY_LISTEN_ON)" send-text $CLEAR_TERMINAL_INPUT 
+  }
+  kitten @ --to $"($env.KITTY_LISTEN_ON)" send-text 'zelp \r' 
+  
 }
 
 # Create remote controllable session
@@ -44,9 +56,7 @@ export def next-session-id [] {
 def wait-for-socket [
   socket_file: path
 ] {
-  # print $"Waiting for ($socket_file) to open..."
   while (kitten @ --to $"unix:($socket_file)" ls | complete | get exit_code) != 0 {}
-  # print $"Found ($socket_file), sleeping..."
   sleep 0.1sec
 }
 
@@ -71,3 +81,5 @@ export def start-pueue [] -> bool {
 export def main [] {
   create-session
 }
+
+
