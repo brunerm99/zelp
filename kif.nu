@@ -18,19 +18,10 @@ export def detach-zellij [
 export def create-session [] {
   let session_id = (next-session-id)
   let socket_file = ([$SOCKET_DIR, $"($SOCKET_FILE_BASE_NAME)($session_id)"] | path join)
-  start-pueue
-  let pueue_id = (
-    pueue add --immediate kitty -o allow_remote_control=yes --listen-on $"unix:($socket_file)" | 
-      complete |
-      get stdout |
-      str trim | 
-      parse 'New task added (id {id}).' | 
-      get -i id.0
-  )
-  # print $"pueue: ($pueue_id), kitty: ($socket_file)"
+  bash -c $"'kitty -o allow_remote_control=yes --listen-on unix:($socket_file)&'"
 
   wait-for-socket $socket_file
-  set-env [[key, value]; [KITTY_SOCKET_FILE, $socket_file], [KITTY_PUEUE_TASK_ID, $"($pueue_id)"]] $socket_file
+  set-env [[key, value]; [KITTY_SOCKET_FILE, $socket_file]] $socket_file
 }
  
 # Get ids of current active kitty sessions
@@ -72,4 +63,11 @@ export def set-env [
 # Start pueue daemon
 export def start-pueue [] -> bool {
   if (ps | where name == (which pueued | get path.0) | is-empty) { pueued -d }
+}
+
+# Interface with kitty terminals through a socket interface.
+# Default behaviour opens a kitty terminal in remote control 
+# mode with some environment variables.
+export def main [] {
+  create-session
 }
