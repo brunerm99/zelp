@@ -158,7 +158,7 @@ export def parse-remote-url [
   try { $git_remote | url parse | url join } catch {
     let parsed_url = ($git_remote | parse '{version_control}@{host}:{username}/{repo}.git')
     if ($parsed_url | is-empty) {
-      "https://www.google.com"
+      "https://github.com/brunerm99"
     } else {
       get 0 | 
       insert "scheme" "https" | 
