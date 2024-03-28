@@ -8,12 +8,18 @@ const DATA_DIR = ([$nu.home-path, ".local", "share", "zelp"] | path join)
 # Open project workspace from selection
 export def main [
   --update (-u) # Update project list cache
+  --remote (-r) # Open remote repo
 ] {
   init # Ensure everything is set up
 
   let projects = if $update { (list-projects -u) } else { (list-projects) }
   let selection = ($projects | input list --fuzzy --display name)
   if ($selection | is-empty) { print "No choice... exiting"; return }
+
+  if $remote { 
+    xdg-open (parse-remote-url $selection.full_path)
+    return
+  }
 
   let layout_dir = [$env.XDG_CONFIG_HOME, "zellij", "layouts"] | path join
   let possible_custom_layout_path = ([$selection.full_path, "zlayout.kdl"] | path join)
@@ -142,6 +148,25 @@ def create-temp-project-layout [
     str replace --all '<project_dir>' $'"($project_dir)"' | 
     save -f $temp_layout_path
   $temp_layout_path
+}
+
+# Parse git remote url
+export def parse-remote-url [
+  project_dir: path # FS repo path
+] {
+  let git_remote = git -C $project_dir remote get-url origin
+  try { $git_remote | url parse | url join } catch {
+    let parsed_url = ($git_remote | parse '{version_control}@{host}:{username}/{repo}.git')
+    if ($parsed_url | is-empty) {
+      "https://www.google.com"
+    } else {
+      get 0 | 
+      insert "scheme" "https" | 
+      insert "path" $"($in.username)/($in.repo)" | 
+      select host path scheme |
+      url join
+    }
+  }
 }
 
 # Initialize
