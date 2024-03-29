@@ -1,0 +1,29 @@
+// auth-needed = false
+// name = home
+
+layout {
+  cwd <project_dir>
+  tab name="Tab #1" cwd=<project_dir> focus=true hide_floating_panes=true {
+    pane size=1 borderless=true {
+        plugin location="zellij:tab-bar"
+    }
+    pane split_direction="vertical" {
+      pane {
+        focus true
+      }
+      pane split_direction="horizontal" {
+        pane {
+          focus true
+          cwd "documents"
+        }
+        pane {
+          focus true
+          cwd "downloads"
+        }
+      }
+    }
+    pane size=2 borderless=true {
+        plugin location="zellij:status-bar"
+    }
+  }
+}

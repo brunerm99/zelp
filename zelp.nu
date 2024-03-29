@@ -12,7 +12,8 @@ export def main [
 ] {
   init # Ensure everything is set up
 
-  let projects = if $update { (list-projects -u) } else { (list-projects) }
+  if $update { list-projects -u; return }
+  let projects = (list-projects)
   let selection = ($projects | input list --fuzzy --display name)
   if ($selection | is-empty) { print "No choice... exiting"; return }
 
@@ -21,23 +22,14 @@ export def main [
     return
   }
 
-  let layout_dir = [$env.XDG_CONFIG_HOME, "zellij", "layouts"] | path join
-  let possible_custom_layout_path = ([$selection.full_path, "zlayout.kdl"] | path join)
-  let layout_path = if ($possible_custom_layout_path | path exists) { 
-    $possible_custom_layout_path 
-  } else {
-    [$layout_dir, "default_layout.kdl"] | path join
-  }
-
-  let layout_config = (parse-layout-config $layout_path)
-  let session_name = ($layout_config | get -i name | default $selection.name)
+  let session_name = ($selection.config | get -i name | default $selection.name)
 
   if (session-exists $session_name) {
     let restart_session_choice = (["no", "yes"] | input list "Session exists, force restart?")
     if ($restart_session_choice | is-empty) {
       print "No choice... exiting"
       return
-    } else if $restart_session_choice == 'yes' {
+    } else if $restart_session_choice == "yes" {
       zellij delete-session $session_name --force
     } else {
       zellij attach $session_name
@@ -45,13 +37,12 @@ export def main [
     }
   }
 
-  if ($layout_config | get -i auth-needed | default false | into bool) and not (authenticate-keyring -v) {
+  if ($selection.config | get -i auth-needed | default false | into bool) and not (authenticate-keyring -v) {
     print "Failed to authenticate keyring..."
     return
   }
 
-  let temp_layout_path = (create-temp-project-layout $layout_path $selection.full_path $session_name)
-
+  let temp_layout_path = (create-temp-project-layout $selection.config.layout_path $selection.full_path $session_name)
   zellij --session $session_name --layout $temp_layout_path
 }
 
@@ -73,20 +64,30 @@ export def delete [
   print $"($num_deleted) sessions deleted"
 }
 
-# List git projects
+# List git projects or directories with zlayout.kdl file
 export def list-projects [
   --update (-u) # Update project list cache
 ] {
+  let default_layout_path = ([$env.XDG_CONFIG_HOME, "zellij", "layouts", "default_layout.kdl"] | path join)
   let project_list_cache = ([$DATA_DIR, "project_cache.nuon"] | path join)
   if ($update) or not ($project_list_cache | path exists) {
     let ignore_dirs_arg = $"-E '{($IGNORE_DIRS | str join ',')}'" | str expand | str join ' '
-    let fd_args = $'-Hau "^.git$" $"($env.HOME)" ($ignore_dirs_arg) --prune'
+    let fd_args = $'-Hau "^.git$|zlayout.kdl$" $"($env.HOME)" ($ignore_dirs_arg) --prune'
     let projects = (
       nu -c $"fd ($fd_args)" | 
         lines | 
         path dirname | 
+        uniq | 
         wrap full_path | 
-        insert name { |row| $row.full_path | path basename }
+        insert config { |row| 
+          let layout_path = ([$row.full_path, "zlayout.kdl"] | path join) 
+          if ($layout_path | path exists) { 
+            parse-layout-config $layout_path | merge { layout_path: $layout_path } 
+          } else { 
+            parse-layout-config $default_layout_path | merge { layout_path: $default_layout_path } 
+          } 
+        } | 
+        insert name { |row| ($row.config | get -i name | default ($row.full_path | path basename)) }
     )
     $projects | to nuon | save -f $project_list_cache
     $projects
@@ -145,7 +146,7 @@ def create-temp-project-layout [
 ] -> path {
   let temp_layout_path = (["/tmp", $"($session_name)-zellij-session-layout.kdl"] | path join)
   open $layout_path --raw | 
-    str replace --all '<project_dir>' $'"($project_dir)"' | 
+    str replace --all '<project_dir>' $'($project_dir)' | 
     save -f $temp_layout_path
   $temp_layout_path
 }
