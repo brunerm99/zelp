@@ -1,6 +1,6 @@
 #!/bin/env nu
 # zelp.nu
-# Zellij git hELPer - the successor to gelp
+# Zellij hELPer - the successor to gelp
 
 const IGNORE_DIRS = [".cache", ".cargo", ".local"]
 const DATA_DIR = ([$nu.home-path, ".local", "share", "zelp"] | path join)

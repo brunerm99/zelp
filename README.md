@@ -1,9 +1,12 @@
-# Zelp - Zellij git hELPer
+# Zelp - Zellij hELPer
 > The successor to [gelp](https://github.com/brunerm99/small-scripts/blob/main/gelp.nu)
 
 ## What is it?
-It's a simple alternative to [tmux-sessionizer](https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer) for [zellij](https://zellij.dev/) written purely in [nushell](https://www.nushell.sh/).
-It has one basic feature and is not completely done.
+A zellij sessionizer similar to [tmux-sessionizer](https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer) written purely in [nushell](https://www.nushell.sh/). 
+Can be used with [kitty](https://sw.kovidgoyal.net/kitty/) terminal (using the `kif.nu` script) to detach, select, and open / create zellij sessions.
+Default behaviour simply selects a project and opens it. 
+Layouts can be configured using a very slightly extended version of `zellij`'s layout file format (example layouts included). 
+If no project-specific layout is provided, there is a default.
 
 ## Setup
 1. Clone repo
