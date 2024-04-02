@@ -4,6 +4,7 @@
 
 const IGNORE_DIRS = [".cache", ".cargo", ".local"]
 const DATA_DIR = ([$nu.home-path, ".local", "share", "zelp"] | path join)
+const LAYOUT_FILENAME = ".zlayout.kdl"
 
 # Open project workspace from selection
 export def main [
@@ -72,7 +73,7 @@ export def list-projects [
   let project_list_cache = ([$DATA_DIR, "project_cache.nuon"] | path join)
   if ($update) or not ($project_list_cache | path exists) {
     let ignore_dirs_arg = $"-E '{($IGNORE_DIRS | str join ',')}'" | str expand | str join ' '
-    let fd_args = $'-Hau "^.git$|zlayout.kdl$" $"($env.HOME)" ($ignore_dirs_arg) --prune'
+    let fd_args = $'-Hau "^.git$|($LAYOUT_FILENAME)$" $"($env.HOME)" ($ignore_dirs_arg) --prune'
     let projects = (
       nu -c $"fd ($fd_args)" | 
         lines | 
@@ -80,7 +81,7 @@ export def list-projects [
         uniq | 
         wrap full_path | 
         insert config { |row| 
-          let layout_path = ([$row.full_path, "zlayout.kdl"] | path join) 
+          let layout_path = ([$row.full_path, $LAYOUT_FILENAME] | path join) 
           if ($layout_path | path exists) { 
             parse-layout-config $layout_path | merge { layout_path: $layout_path } 
           } else { 
@@ -146,7 +147,7 @@ def create-temp-project-layout [
 ] -> path {
   let temp_layout_path = (["/tmp", $"($session_name)-zellij-session-layout.kdl"] | path join)
   open $layout_path --raw | 
-    str replace --all '<project_dir>' $'($project_dir)' | 
+    str replace --all '<project_dir>' $'"($project_dir)"' | 
     save -f $temp_layout_path
   $temp_layout_path
 }
