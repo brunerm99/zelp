@@ -97,6 +97,16 @@ export def list-projects [
   }
 }
 
+# TODO: Finish number of uses, last use implementation
+export def update-uses [
+  cached # Cached projects
+  new # New projects
+] {
+  $cached | 
+    join $new full_path | 
+    update last_use { |row| if (($row.last_use | default (1970 | into datetime)) > ($row.last_use_ | default (1970 | into datetime))) { $row.last_use } else { $row.last_use_ } } 
+}
+
 # List existing zellij sessions
 def list-sessions [] {
   zellij ls --short | lines
