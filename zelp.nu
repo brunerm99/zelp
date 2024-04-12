@@ -4,6 +4,7 @@
 
 const IGNORE_DIRS = [".cache", ".cargo", ".local"]
 const DATA_DIR = ([$nu.home-path, ".local", "share", "zelp"] | path join)
+const PROJECT_LIST_CACHE_FNAME = "project_cache.nuon"
 const LAYOUT_FILENAME = ".zlayout.kdl"
 
 # Open project workspace from selection
@@ -14,14 +15,19 @@ export def main [
   init # Ensure everything is set up
 
   if $update { list-projects -u; return }
-  let projects = (list-projects)
-  let selection = ($projects | input list --fuzzy --display name)
+  let projects = (list-projects | 
+    sort-by -rin last_used uses name | 
+    upsert fmt { |row| $'($row.name)(if $row.uses > 0 { $" \((ansi green)uses: ($row.uses)(ansi reset))" })(if $row.last_used > (0 | into datetime) { $" \((ansi green)last used ($row.last_used | date humanize)(ansi reset))" })' }
+  )
+  let selection = ($projects | input list --fuzzy --display fmt)
   if ($selection | is-empty) { print "No choice... exiting"; return }
 
   if $remote { 
     xdg-open (parse-remote-url $selection.full_path)
     return
   }
+
+  update-uses $projects $selection
 
   let session_name = ($selection.config | get -i name | default $selection.name)
 
@@ -70,7 +76,8 @@ export def list-projects [
   --update (-u) # Update project list cache
 ] {
   let default_layout_path = ([$env.XDG_CONFIG_HOME, "zellij", "layouts", "default_layout.kdl"] | path join)
-  let project_list_cache = ([$DATA_DIR, "project_cache.nuon"] | path join)
+  let project_list_cache = ([$DATA_DIR, $PROJECT_LIST_CACHE_FNAME] | path join)
+  if ($project_list_cache | path exists) {  }
   if ($update) or not ($project_list_cache | path exists) {
     let ignore_dirs_arg = $"-E '{($IGNORE_DIRS | str join ',')}'" | str expand | str join ' '
     let fd_args = $'-Hau "^.git$|($LAYOUT_FILENAME)$" $"($env.HOME)" ($ignore_dirs_arg) --prune'
@@ -88,8 +95,12 @@ export def list-projects [
             parse-layout-config $default_layout_path | merge { layout_path: $default_layout_path } 
           } 
         } | 
-        insert name { |row| ($row.config | get -i name | default ($row.full_path | path basename)) }
+        insert name { |row| ($row.config | get -i name | default ($row.full_path | path basename)) } |
+        insert uses { 0 } |
+        insert last_used { null }
     )
+    let cached_projects = if ($project_list_cache | path exists) { open $project_list_cache } else { $projects }
+    let projects = (join-project-lists $cached_projects $projects)
     $projects | to nuon | save -f $project_list_cache
     $projects
   } else {
@@ -97,14 +108,27 @@ export def list-projects [
   }
 }
 
-# TODO: Finish number of uses, last use implementation
-export def update-uses [
+export def join-project-lists [
   cached # Cached projects
   new # New projects
 ] {
   $cached | 
-    join $new full_path | 
-    update last_use { |row| if (($row.last_use | default (1970 | into datetime)) > ($row.last_use_ | default (1970 | into datetime))) { $row.last_use } else { $row.last_use_ } } 
+    join --outer $new full_path | 
+    update uses { |row| ([($row.uses | default 0), ($row.uses_ | default 0)] | math max) } |
+    update last_used { |row| ([($row.last_used | default (0 | into datetime)), ($row.last_used_ | default (0 | into datetime))] | math max) } |
+    update name { |row| $row.name_ } |
+    update config { |row| $row.config_ } | 
+    reject -i ...($in | columns | find --regex '^(?<name>\w+)_$') fmt
+}
+
+export def update-uses [
+  projects # List of projects to update
+  selected_project # Selected project record
+] {
+  $projects | 
+    update last_used { |row| if $row.full_path == $selected_project.full_path { date now } else { $row.last_used } } | 
+    update uses { |row| if $row.full_path == $selected_project.full_path { $row.uses + 1 } else { $row.uses } } |
+    save -f ([$DATA_DIR, $PROJECT_LIST_CACHE_FNAME] | path join)
 }
 
 # List existing zellij sessions
